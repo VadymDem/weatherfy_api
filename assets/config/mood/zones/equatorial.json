@@ -1,0 +1,27 @@
+{
+  "zone": "equatorial",
+  "temperature_ranges": {
+    "cool": [20, 24],
+    "comfortable": [24, 29],
+    "warm": [29, 33],
+    "hot": [33, 37],
+    "very_hot": [37, 50]
+  },
+  "norms": {
+    "temperature": {
+      "winter": { "expected": 26, "tolerance": 4 },
+      "spring": { "expected": 26, "tolerance": 4 },
+      "summer": { "expected": 26, "tolerance": 4 },
+      "autumn": { "expected": 26, "tolerance": 4 }
+    }
+  },
+  "adjustments": {
+    "precipitation": {
+      "light_rain": { "valence": 0.05 },
+      "heavy_rain": { "valence": -0.05 }
+    },
+    "temperature": {
+      "cool": { "energy": 0.10, "valence": 0.15 }
+    }
+  }
+}

@@ -1,0 +1,26 @@
+{
+  "zone": "antarctic",
+  "temperature_ranges": {
+    "freezing": [-80, -30],
+    "cold": [-30, -15],
+    "cool": [-15, 0],
+    "comfortable": [0, 8],
+    "warm": [8, 15],
+    "hot": [15, 22],
+    "very_hot": [22, 50]
+  },
+  "norms": {
+    "temperature": {
+      "winter": { "expected": -40, "tolerance": 18 },
+      "spring": { "expected": -20, "tolerance": 15 },
+      "summer": { "expected": -5, "tolerance": 12 },
+      "autumn": { "expected": -25, "tolerance": 15 }
+    }
+  },
+  "adjustments": {
+    "temperature": {
+      "comfortable": { "energy": 0.30, "valence": 0.35 },
+      "warm": { "energy": 0.25, "valence": 0.30 }
+    }
+  }
+}

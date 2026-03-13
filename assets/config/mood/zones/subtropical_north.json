@@ -1,0 +1,27 @@
+{
+  "zone": "subtropical_north",
+  "temperature_ranges": {
+    "cold": [-5, 8],
+    "cool": [8, 15],
+    "comfortable": [15, 24],
+    "warm": [24, 30],
+    "hot": [30, 36],
+    "very_hot": [36, 50]
+  },
+  "norms": {
+    "temperature": {
+      "winter": { "expected": 6, "tolerance": 8 },
+      "spring": { "expected": 15, "tolerance": 8 },
+      "summer": { "expected": 26, "tolerance": 6 },
+      "autumn": { "expected": 18, "tolerance": 8 }
+    }
+  },
+  "adjustments": {
+    "temperature": {
+      "freezing": {
+        "energy": 0.15,
+        "valence": 0.15
+      }
+    }
+  }
+}

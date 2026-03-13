@@ -1,0 +1,26 @@
+{
+  "zone": "subarctic",
+  "temperature_ranges": {
+    "freezing": [-40, -10],
+    "cold": [-10, 0],
+    "cool": [0, 10],
+    "comfortable": [10, 18],
+    "warm": [18, 24],
+    "hot": [24, 30],
+    "very_hot": [30, 50]
+  },
+  "norms": {
+    "temperature": {
+      "winter": { "expected": -15, "tolerance": 12 },
+      "spring": { "expected": 2, "tolerance": 10 },
+      "summer": { "expected": 15, "tolerance": 8 },
+      "autumn": { "expected": 5, "tolerance": 10 }
+    }
+  },
+  "adjustments": {
+    "temperature": {
+      "comfortable": { "energy": 0.25, "valence": 0.30 },
+      "warm": { "energy": 0.20, "valence": 0.25 }
+    }
+  }
+}

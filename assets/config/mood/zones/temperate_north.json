@@ -1,0 +1,26 @@
+{
+  "zone": "temperate_north",
+  "temperature_ranges": {
+    "freezing": [-15, 0],
+    "cold": [0, 8],
+    "cool": [8, 16],
+    "comfortable": [16, 24],
+    "warm": [24, 30],
+    "hot": [30, 36],
+    "very_hot": [36, 50]
+  },
+  "norms": {
+    "temperature": {
+      "winter": { "expected": 0, "tolerance": 8 },
+      "spring": { "expected": 12, "tolerance": 8 },
+      "summer": { "expected": 22, "tolerance": 7 },
+      "autumn": { "expected": 12, "tolerance": 8 }
+    }
+  },
+  "adjustments": {
+    "precipitation": {
+      "light_snow": { "valence": 0.05 },
+      "heavy_snow": { "valence": -0.05 }
+    }
+  }
+}

@@ -1,0 +1,31 @@
+{
+  "version": "2.0",
+  "initial": { "energy": 0.5, "valence": 0.5 },
+  "factors": {
+    "temperature": {
+      "freezing":   { "energy": -0.30, "valence": -0.25 },
+      "cold":       { "energy": -0.15, "valence": -0.10 },
+      "cool":       { "energy":  0.05, "valence":  0.05 },
+      "comfortable":{ "energy":  0.25, "valence":  0.30 },
+      "warm":       { "energy":  0.10, "valence":  0.10 },
+      "hot":        { "energy": -0.15, "valence": -0.20 },
+      "very_hot":   { "energy": -0.35, "valence": -0.40 }
+    },
+    "cloudiness": {
+      "overcast": { "energy": -0.15, "valence": -0.20 }
+    },
+    "precipitation": {
+      "none":        { "energy": 0.0, "valence": 0.0 },
+      "light_rain":  { "energy": -0.10, "valence": -0.15 },
+      "heavy_rain":  { "energy": -0.25, "valence": -0.30 },
+      "light_snow":  { "energy": -0.05, "valence": 0.05 },
+      "heavy_snow":  { "energy": -0.20, "valence": -0.10 }
+    },
+    "wind": {
+      "calm":     { "energy": 0.0, "valence": 0.0 },
+      "breezy":   { "energy": 0.05, "valence": 0.05 },
+      "windy":    { "energy": -0.10, "valence": -0.05 },
+      "storm":    { "energy": -0.25, "valence": -0.15 }
+    }
+  }
+}

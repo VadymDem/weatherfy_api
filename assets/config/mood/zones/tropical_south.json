@@ -1,0 +1,19 @@
+{
+  "zone": "tropical_south",
+  "temperature_ranges": {
+    "cold": [-5, 10],
+    "cool": [10, 22],
+    "comfortable": [22, 27],
+    "warm": [27, 31],
+    "hot": [31, 35],
+    "very_hot": [35, 50]
+  },
+  "norms": {
+    "temperature": {
+      "winter": { "expected": 20, "tolerance": 6 },
+      "spring": { "expected": 25, "tolerance": 6 },
+      "summer": { "expected": 28, "tolerance": 5 },
+      "autumn": { "expected": 25, "tolerance": 6 }
+    }
+  }
+}

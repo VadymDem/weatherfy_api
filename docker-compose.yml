@@ -1,0 +1,12 @@
+services:
+  weatherfy-api:
+    build: .
+    container_name: weatherfy-api
+    restart: unless-stopped
+    ports:
+      - "8080:8080"
+    env_file:
+      - .env
+    volumes:
+      # Монтируем .env отдельно если нужно обновить ключ без пересборки
+      - ./.env:/app/.env:ro
