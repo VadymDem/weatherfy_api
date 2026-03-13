@@ -10,5 +10,5 @@ class Env {
   static String get weatherApiKey =>
       _env['OPENWEATHER_API_KEY'] ?? (throw Exception('OPENWEATHER_API_KEY not set'));
 
-  static int get port => int.tryParse(_env['PORT'] ?? '8081') ?? 8081;
+  static int get port => int.tryParse(_env['PORT'] ?? '8080') ?? 8080;
 }
