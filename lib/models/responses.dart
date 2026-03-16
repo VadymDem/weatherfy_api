@@ -63,6 +63,8 @@ class HourlyForecast {
         'weather_code': weatherCode,
         'wind_speed': windSpeed,
         'is_day': isDay,
+        'icon_code': iconCode,
+        'description': description,
       };
 
   factory HourlyForecast.fromJson(Map<String, dynamic> j) => HourlyForecast(
@@ -112,6 +114,8 @@ class DailyForecast {
         'sunset': sunset.toIso8601String(),
         'precip_sum': precipitationSum,
         'wind_max': windSpeedMax,
+        'icon_code': iconCode,
+        'description': description,
       };
 
   factory DailyForecast.fromJson(Map<String, dynamic> j) => DailyForecast(
