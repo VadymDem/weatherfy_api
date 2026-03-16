@@ -199,19 +199,19 @@ class WeatherResponse {
         humidity: (j['humidity'] as num).toInt(),
         cloudiness: (j['cloudiness'] as num).toInt(),
         windSpeed: (j['wind_speed'] as num).toDouble(),
-        precipitation: (j['precipitation'] as num).toDouble(),
-        weatherCode: (j['weather_code'] as num).toInt(),
-        isDay: j['is_day'] as bool,
-        pressure: (j['pressure'] as num).toInt(),
+        precipitation: (j['precipitation'] as num? ?? 0).toDouble(),
+        weatherCode: (j['weather_code'] as num? ?? 0).toInt(),
+        isDay: j['is_day'] as bool? ?? true,
+        pressure: (j['pressure'] as num? ?? 1013).toInt(),
         sunrise: DateTime.parse(j['sunrise'] as String),
         sunset: DateTime.parse(j['sunset'] as String),
-        tempMin: (j['temp_min'] as num).toDouble(),
-        tempMax: (j['temp_max'] as num).toDouble(),
-        timezoneOffsetSeconds: (j['timezone_offset_seconds'] as num).toInt(),
-        hourly: (j['hourly'] as List)
+        tempMin: (j['temp_min'] as num? ?? j['temp'] as num).toDouble(),
+        tempMax: (j['temp_max'] as num? ?? j['temp'] as num).toDouble(),
+        timezoneOffsetSeconds: (j['timezone_offset_seconds'] as num? ?? 0).toInt(),
+        hourly: (j['hourly'] as List? ?? [])
             .map((e) => HourlyForecast.fromJson(e as Map<String, dynamic>))
             .toList(),
-        daily: (j['daily'] as List)
+        daily: (j['daily'] as List? ?? [])
             .map((e) => DailyForecast.fromJson(e as Map<String, dynamic>))
             .toList(),
       );
