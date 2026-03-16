@@ -10,45 +10,54 @@ class MoodService {
   MoodService({String? assetsPath})
       : _assetsPath = assetsPath ?? _resolveAssetsPath();
 
-  // 🔧 Находим правильный путь к assets
-    static String _resolveAssetsPath() {
-    // Вариант A: Явный путь для Docker (если запущен как exe)
-    // Скрипт: /app/bin/server -> нам нужен /app/assets
+      // 🔧 Находим правильный путь к assets
+  static String _resolveAssetsPath() {
+    print('🔍 Start resolving assets path...');
+    print('   CWD: ${Directory.current.path}');
+    
+    // Вариант 1: Относительно текущего скрипта (server.dart)
     try {
       final scriptPath = Platform.script.toFilePath();
-      print('ℹ️ Script path: $scriptPath');
+      print('   Script: $scriptPath');
       
-      // Если это скомпилированный exe в Docker
-      if (scriptPath.endsWith('/bin/server') || scriptPath.endsWith('\\bin\\server')) {
-        final appDir = path.dirname(path.dirname(scriptPath)); // /app
-        final assetsPath = path.join(appDir, 'assets', 'config', 'mood');
-        if (Directory(assetsPath).existsSync()) {
-          print('✅ Assets found via script path (Docker): $assetsPath');
-          return assetsPath;
-        }
+      final scriptDir = path.dirname(scriptPath); // /app/bin
+      
+      // ИСПРАВЛЕНИЕ: Поднимаемся на ОДНУ директорию вверх, так как assets - сосед папки bin
+      final candidate = path.join(scriptDir, '..', 'assets', 'config', 'mood');
+      final normalized = path.normalize(candidate);
+      
+      print('   Checking path (from script): $normalized');
+      
+      if (Directory(normalized).existsSync()) {
+        print('✅ Assets found at: $normalized');
+        return normalized;
+      } else {
+        print('   ❌ Not found at script path.');
       }
     } catch (e) {
-      print('⚠️ Script path resolution failed: $e');
+      print('   ⚠️ Error resolving script path: $e');
     }
 
-    // Вариант B: Относительно рабочей директории (для локальной разработки)
+    // Вариант 2: Относительно текущей рабочей директории
     final fromCwd = path.join(Directory.current.path, 'assets', 'config', 'mood');
-    if (Directory(fromCwd).existsSync()) {
-      print('✅ Assets found via CWD: $fromCwd');
-      return fromCwd;
+    final normalizedCwd = path.normalize(fromCwd);
+    print('   Checking path (from CWD): $normalizedCwd');
+    
+    if (Directory(normalizedCwd).existsSync()) {
+      print('✅ Assets found at: $normalizedCwd');
+      return normalizedCwd;
     }
 
-    // Если ничего не нашли — выводим отладку и падаем
-    print('❌ CRITICAL: Assets directory not found!');
-    print('   Current Directory: ${Directory.current.path}');
-    print('   Checked path: $fromCwd');
-    
+    // Если ничего не нашли
     throw Exception(
-      'Assets folder not found at $fromCwd. '
-      'Ensure assets are copied in Dockerfile.',
+      '❌ Assets folder not found!\n'
+      'Checked paths:\n'
+      '1. Relative to executable\n'
+      '2. ${normalizedCwd}\n'
+      'Check Dockerfile COPY commands and working directory.'
     );
   }
-  
+
   Future<MoodResponse> calculateMood({
     required WeatherResponse weather,
     required double latitude,
