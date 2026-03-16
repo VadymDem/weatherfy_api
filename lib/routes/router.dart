@@ -35,7 +35,9 @@ Router buildRouter() {
   // Body: { weather: {...}, latitude: 0.0, climate_zone: "temperate_north" }
   router.post('/mood', (Request request) async {
     try {
-      final body = jsonDecode(await request.readAsString()) as Map<String, dynamic>;
+      final rawBody = await request.readAsString();
+      print('📦 /mood raw: ${rawBody.substring(0, rawBody.length.clamp(0, 500))}');
+      final body = jsonDecode(rawBody) as Map<String, dynamic>;
       final weatherJson = body['weather'] as Map<String, dynamic>?;
       final latitude = (body['latitude'] as num?)?.toDouble();
       final climateZone = body['climate_zone'] as String?;
