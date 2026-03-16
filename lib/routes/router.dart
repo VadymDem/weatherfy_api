@@ -51,12 +51,11 @@ Router buildRouter() {
         climateZone: climateZone,
       );
       return _ok(mood.toJson());
-    } catch (e) {
+    } catch (e, stack) {
+      print('❌ /mood error: $e\n$stack');
       return _serverError(e.toString());
     }
   });
-
-  // ── GET /music?energy=&valence=&limit= ───────────────────────────────────
   router.get('/music', (Request request) async {
     final params = request.url.queryParameters;
     final energy = double.tryParse(params['energy'] ?? '');
