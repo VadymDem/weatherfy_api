@@ -11,35 +11,44 @@ class MoodService {
       : _assetsPath = assetsPath ?? _resolveAssetsPath();
 
   // 🔧 Находим правильный путь к assets
-  static String _resolveAssetsPath() {
-    // Вариант 1: Относительно текущего скрипта (server.dart)
+    static String _resolveAssetsPath() {
+    // Вариант A: Явный путь для Docker (если запущен как exe)
+    // Скрипт: /app/bin/server -> нам нужен /app/assets
     try {
-      final scriptDir = path.dirname(Platform.script.toFilePath());
-      final candidate = path.join(scriptDir, '..', '..', 'assets', 'config', 'mood');
-      final normalized = path.normalize(candidate);
+      final scriptPath = Platform.script.toFilePath();
+      print('ℹ️ Script path: $scriptPath');
       
-      if (Directory(normalized).existsSync()) {
-        print('✅ Assets found at: $normalized');
-        return normalized;
+      // Если это скомпилированный exe в Docker
+      if (scriptPath.endsWith('/bin/server') || scriptPath.endsWith('\\bin\\server')) {
+        final appDir = path.dirname(path.dirname(scriptPath)); // /app
+        final assetsPath = path.join(appDir, 'assets', 'config', 'mood');
+        if (Directory(assetsPath).existsSync()) {
+          print('✅ Assets found via script path (Docker): $assetsPath');
+          return assetsPath;
+        }
       }
-    } catch (_) {}
+    } catch (e) {
+      print('⚠️ Script path resolution failed: $e');
+    }
 
-    // Вариант 2: Относительно текущей рабочей директории
+    // Вариант B: Относительно рабочей директории (для локальной разработки)
     final fromCwd = path.join(Directory.current.path, 'assets', 'config', 'mood');
     if (Directory(fromCwd).existsSync()) {
-      print('✅ Assets found at: $fromCwd');
+      print('✅ Assets found via CWD: $fromCwd');
       return fromCwd;
     }
 
-    // Вариант 3: Абсолютный путь (для отладки)
+    // Если ничего не нашли — выводим отладку и падаем
+    print('❌ CRITICAL: Assets directory not found!');
+    print('   Current Directory: ${Directory.current.path}');
+    print('   Checked path: $fromCwd');
+    
     throw Exception(
-      'Не удалось найти папку assets/config/mood!\n'
-      'Current directory: ${Directory.current.path}\n'
-      'Script location: ${Platform.script.toFilePath()}\n'
-      'Проверьте, что файлы существуют в проекте.',
+      'Assets folder not found at $fromCwd. '
+      'Ensure assets are copied in Dockerfile.',
     );
   }
-
+  
   Future<MoodResponse> calculateMood({
     required WeatherResponse weather,
     required double latitude,
