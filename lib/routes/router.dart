@@ -40,6 +40,8 @@ Router buildRouter() {
       final latitude = (body['latitude'] as num?)?.toDouble();
       final climateZone = body['climate_zone'] as String?;
 
+      print('📦 /mood body keys: ${weatherJson?.keys.toList()}');
+
       if (weatherJson == null || latitude == null || climateZone == null) {
         return _badRequest('weather, latitude and climate_zone are required');
       }
