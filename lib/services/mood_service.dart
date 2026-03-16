@@ -7,42 +7,33 @@ import 'package:weatherfy_api/models/responses.dart';
 class MoodService {
   final String _assetsPath;
 
-    MoodService({String? assetsPath})
+  MoodService({String? assetsPath})
       : _assetsPath = assetsPath ?? _resolveAssetsPath() {
-    // Добавим лог в конструктор, чтобы видеть инициализацию
     print('⚡️ MoodService initialized. Path: $_assetsPath');
   }
-      // 🔧 Находим правильный путь к assets
-    static String _resolveAssetsPath() {
-    // Вариант 1: Относительно скрипта (для Docker: /app/bin/server -> /app/assets)
+
+  static String _resolveAssetsPath() {
     try {
-      final scriptPath = Platform.script.toFilePath();
-      // Если запущен как скомпилированный exe
-      final scriptDir = path.dirname(scriptPath); 
-      // Поднимаемся на один уровень вверх из bin/ в app/
-      final candidate = path.join(scriptDir, '..', 'assets', 'config', 'mood');
-      final normalized = path.normalize(candidate);
-      
-      if (Directory(normalized).existsSync()) {
-        return normalized;
+      final scriptDir = path.dirname(Platform.script.toFilePath());
+      // Проверяем несколько вариантов расположения assets (Docker vs Local)
+      final candidates = [
+        path.join(Directory.current.path, 'assets', 'config', 'mood'),
+        path.join(scriptDir, '..', 'assets', 'config', 'mood'),
+        path.join(scriptDir, 'assets', 'config', 'mood'),
+      ];
+
+      for (final candidate in candidates) {
+        final normalized = path.normalize(candidate);
+        if (Directory(normalized).existsSync()) {
+          return normalized;
+        }
       }
+      throw Exception('Assets directory not found in: $candidates');
     } catch (e) {
-      print('Error resolving script path: $e');
+      print('❌ Error resolving path: $e');
+      // fallback на текущую директорию
+      return path.join(Directory.current.path, 'assets', 'config', 'mood');
     }
-
-    // Вариант 2: Относительно рабочей директории
-    final fromCwd = path.join(Directory.current.path, 'assets', 'config', 'mood');
-    if (Directory(fromCwd).existsSync()) {
-      return fromCwd;
-    }
-
-    // Детальный вывод ошибки
-    final scriptDir = path.dirname(Platform.script.toFilePath());
-    throw Exception(
-        'Assets not found!\n'
-        'Script dir: $scriptDir\n'
-        'Checked: ${path.normalize(path.join(scriptDir, '..', 'assets', 'config', 'mood'))}\n'
-        'CWD check: $fromCwd');
   }
 
   Future<MoodResponse> calculateMood({
@@ -50,202 +41,157 @@ class MoodService {
     required double latitude,
     required String climateZone,
   }) async {
-    print(' Calculating mood for zone: $climateZone');
-    print('📁 Assets path: $_assetsPath');
-
     try {
+      // 1. Загрузка конфигов
       final baseConfig = await _loadJson('base.json');
-      print('✅ base.json loaded');
+      
+      // Нормализуем имя зоны: "Temperate North" -> "temperate_north.json"
+      final normalizedZone = climateZone.toLowerCase().trim().replaceAll(' ', '_');
+      final zoneConfig = await _loadJson('zones/$normalizedZone.json');
 
-      final zoneFileName = '$climateZone.json';
-      final zoneConfig = await _loadJson('zones/$zoneFileName');
-      print('✅ zones/$zoneFileName loaded');
-
+      // 2. Начальные значения
       double energy = _toDouble(baseConfig['initial']?['energy'] ?? 0.5);
       double valence = _toDouble(baseConfig['initial']?['valence'] ?? 0.5);
 
-      final sensitivity = zoneConfig['zone_sensitivity'] ?? {};
+      final factors = baseConfig['factors'] as Map<String, dynamic>? ?? {};
+      final sensitivity = zoneConfig['zone_sensitivity'] as Map<String, dynamic>? ?? {};
+
+      // --- РАСЧЕТ ФАКТОРОВ ---
 
       // 1️⃣ Температура
       final tempCategory = _getTemperatureCategory(weather.temp, zoneConfig);
-      final tempRanges = zoneConfig['temperature_ranges'] as Map<String, dynamic>?;
-      if (tempRanges != null && tempRanges.containsKey(tempCategory)) {
-        final tempRange = tempRanges[tempCategory] as List<dynamic>?;
-        if (tempRange != null && tempRange.length >= 2) {
-          final mid = (_toDouble(tempRange[0]) + _toDouble(tempRange[1])) / 2;
-          final span = (_toDouble(tempRange[1]) - _toDouble(tempRange[0])) / 2;
-          final tempFactor = span > 0 ? ((weather.temp - mid).abs()) / span : 0.0;
-          final tempWeights = (baseConfig['factors']?['temperature']
-              as Map<String, dynamic>?)?[tempCategory] as Map<String, dynamic>?;
-          if (tempWeights != null) {
-            final factor = _toDouble(sensitivity['temperature']?[tempCategory] ?? 1.0);
-            energy += _toDouble(tempWeights['energy'] ?? 0.0) * tempFactor * factor;
-            valence += _toDouble(tempWeights['valence'] ?? 0.0) * tempFactor * factor;
-          }
+      final tempWeights = (factors['temperature'] as Map<String, dynamic>?)?[tempCategory];
+      
+      if (tempWeights != null) {
+        final weightMap = tempWeights as Map<String, dynamic>;
+        final zoneFactor = _toDouble(sensitivity['temperature']?[tempCategory] ?? 1.0);
+        
+        // Плавный расчет отклонения внутри диапазона (если есть данные)
+        final ranges = zoneConfig['temperature_ranges'] as Map<String, dynamic>?;
+        double intensity = 1.0;
+        if (ranges != null && ranges.containsKey(tempCategory)) {
+          final r = ranges[tempCategory] as List;
+          final mid = (_toDouble(r[0]) + _toDouble(r[1])) / 2;
+          final span = (_toDouble(r[1]) - _toDouble(r[0])) / 2;
+          if (span > 0) intensity = 1.0 - ((weather.temp - mid).abs() / span).clamp(0.0, 0.5);
         }
+
+        energy += _toDouble(weightMap['energy']) * zoneFactor * intensity;
+        valence += _toDouble(weightMap['valence']) * zoneFactor * intensity;
       }
 
       // 2️⃣ Облачность
-      final cloudFactor = weather.cloudiness / 100.0;
-      final cloudWeights = baseConfig['factors']?['cloudiness'] as Map<String, dynamic>?;
+      final cloudFactor = (weather.cloudiness / 100.0).clamp(0.0, 1.0);
+      final cloudWeights = factors['cloudiness']?['overcast'] as Map<String, dynamic>?;
       if (cloudWeights != null) {
-        energy += cloudFactor * _toDouble(cloudWeights['overcast']?['energy'] ?? 0.0);
-        valence += cloudFactor * _toDouble(cloudWeights['overcast']?['valence'] ?? 0.0);
+        energy += cloudFactor * _toDouble(cloudWeights['energy']);
+        valence += cloudFactor * _toDouble(cloudWeights['valence']);
       }
 
       // 3️⃣ Осадки
-      final precipType = _getPrecipitationType(weather.description);
-      final precipWeights = (baseConfig['factors']?['precipitation']
-          as Map<String, dynamic>?)?[precipType] as Map<String, dynamic>?;
-      final precipFactor = _toDouble(sensitivity['precipitation']?[precipType] ?? 1.0);
+      final precipType = _getPrecipitationType(weather.description, weather.weatherCode);
+      final precipWeights = (factors['precipitation'] as Map<String, dynamic>?)?[precipType] as Map<String, dynamic>?;
+      
       if (precipWeights != null) {
-        final combinedFactor = 1 + (weather.windSpeed / 10);
-        energy += _toDouble(precipWeights['energy'] ?? 0.0) * precipFactor * combinedFactor;
-        valence += _toDouble(precipWeights['valence'] ?? 0.0) * precipFactor * combinedFactor;
+        final zoneFactor = _toDouble(sensitivity['precipitation']?[precipType] ?? 1.0);
+        // Ветер усиливает неприятность осадков
+        final windImpact = 1.0 + (weather.windSpeed / 15.0).clamp(0.0, 0.5);
+        
+        energy += _toDouble(precipWeights['energy']) * zoneFactor * windImpact;
+        valence += _toDouble(precipWeights['valence']) * zoneFactor * windImpact;
       }
 
       // 4️⃣ Ветер
-      final windWeights = baseConfig['factors']?['wind'] as Map<String, dynamic>?;
-      if (windWeights != null) {
+      final windWeightsMap = factors['wind'] as Map<String, dynamic>?;
+      if (windWeightsMap != null) {
         final ws = weather.windSpeed;
-        final windEnergy = ws < 3
-            ? _toDouble(windWeights['calm']?['energy'] ?? 0.0)
-            : ws < 7
-                ? _toDouble(windWeights['breezy']?['energy'] ?? 0.0) * (ws / 7)
-                : ws < 12
-                    ? _toDouble(windWeights['windy']?['energy'] ?? 0.0) * (ws / 12)
-                    : _toDouble(windWeights['storm']?['energy'] ?? 0.0);
-        final windValence = ws < 3
-            ? _toDouble(windWeights['calm']?['valence'] ?? 0.0)
-            : ws < 7
-                ? _toDouble(windWeights['breezy']?['valence'] ?? 0.0) * (ws / 7)
-                : ws < 12
-                    ? _toDouble(windWeights['windy']?['valence'] ?? 0.0) * (ws / 12)
-                    : _toDouble(windWeights['storm']?['valence'] ?? 0.0);
-        energy += windEnergy;
-        valence += windValence;
-      }
-
-      // 5️⃣ Время суток
-      final now = DateTime.now().toUtc();
-      final dayProgress = _getDayProgress(now, weather.sunrise, weather.sunset);
-      energy += 0.2 * math.sin(dayProgress * math.pi);
-      valence += 0.15 * math.sin(dayProgress * math.pi);
-
-      // 6️⃣ Сезонное отклонение
-      final season = _getSeason(now, latitude);
-      final seasonalNorm =
-          zoneConfig['norms']?['temperature']?[season] as Map<String, dynamic>?;
-      if (seasonalNorm != null) {
-        final normTemp = _toDouble(seasonalNorm['expected'] ?? weather.temp);
-        final tolerance = _toDouble(seasonalNorm['tolerance'] ?? 10.0);
-        if (tolerance > 0) {
-          final delta = (weather.temp - normTemp) / tolerance;
-          final clamped = math.min(math.max(delta, -1.0), 1.0);
-          final deltaFactor = math.pow(clamped.abs(), 1.5).toDouble();
-          energy += deltaFactor * 0.1;
-          valence += clamped > 0 ? deltaFactor * 0.05 : -deltaFactor * 0.15;
+        String windCat = ws < 3 ? 'calm' : ws < 8 ? 'breezy' : ws < 15 ? 'windy' : 'storm';
+        final w = windWeightsMap[windCat] as Map<String, dynamic>?;
+        if (w != null) {
+          energy += _toDouble(w['energy']);
+          valence += _toDouble(w['valence']);
         }
       }
 
-      // 7️⃣ Нормализация
-      energy = math.min(math.max(energy, 0.0), 1.0);
-      valence = math.min(math.max(valence, 0.0), 1.0);
-
-      print('✅ Mood calculated: energy=${energy.toStringAsFixed(2)}, valence=${valence.toStringAsFixed(2)}');
-      return MoodResponse(energy: energy, valence: valence);
+      // 5️⃣ Время суток (биоритм)
+      final now = DateTime.now().toUtc();
+      // Учитываем смещение часового пояса города
+      final localNow = now.add(Duration(seconds: weather.timezoneOffsetSeconds));
+      final dayProgress = _getDayProgress(localNow, weather.sunrise, weather.sunset);
       
+      // Пик энергии днем (синусоида)
+      energy += 0.15 * math.sin(dayProgress * math.pi);
+      valence += 0.10 * math.sin(dayProgress * math.pi);
+
+      // 6. Финальная нормализация
+      energy = energy.clamp(0.0, 1.0);
+      valence = valence.clamp(0.0, 1.0);
+
+      print('✅ Mood for $climateZone: E:${energy.toStringAsFixed(2)} V:${valence.toStringAsFixed(2)}');
+      return MoodResponse(energy: energy, valence: valence);
+
     } catch (e, stack) {
-      print('❌ Error in calculateMood: $e');
-      print('Stack: $stack');
-      rethrow;
+      print('❌ Critical error in calculateMood: $e');
+      print(stack);
+      // Возвращаем нейтральное состояние вместо 500 ошибки, если что-то пошло не так
+      return MoodResponse(energy: 0.5, valence: 0.5);
     }
   }
 
+  // --- ВСПОМОГАТЕЛЬНЫЕ МЕТОДЫ ---
+
   Future<Map<String, dynamic>> _loadJson(String relativePath) async {
-    final fullPath = path.join(_assetsPath, relativePath);
+    final fullPath = path.normalize(path.join(_assetsPath, relativePath));
     final file = File(fullPath);
-    
-    print('📄 Loading: $fullPath');
-    
-    if (!file.existsSync()) {
-      final availableFiles = Directory(_assetsPath).listSync(recursive: true);
-      print('❌ File not found: $fullPath');
-      print('📁 Available files in $_assetsPath:');
-      for (final f in availableFiles) {
-        print('   - ${f.path}');
-      }
-      throw Exception('Config not found: $relativePath\nResolved path: $fullPath');
+
+    if (!await file.exists()) {
+      print('⚠️ File missing: $fullPath. Using empty config.');
+      return {};
     }
-    
-    try {
-      final content = await file.readAsString();
-      final json = jsonDecode(content) as Map<String, dynamic>;
-      print('✅ Successfully loaded: $relativePath');
-      return json;
-    } catch (e) {
-      print('❌ Error parsing JSON: $fullPath');
-      print('Error: $e');
-      rethrow;
-    }
+
+    final content = await file.readAsString();
+    return jsonDecode(content) as Map<String, dynamic>;
   }
 
   static double _toDouble(dynamic v) {
-    if (v is double) return v;
-    if (v is int) return v.toDouble();
     if (v is num) return v.toDouble();
     return 0.0;
   }
 
-  static String _getPrecipitationType(String description) {
-    final d = description.toLowerCase();
-    if (d.contains('дождь') || d.contains('ливень') || d.contains('морось')) return 'light_rain';
-    if (d.contains('снег')) return 'light_snow';
+  static String _getPrecipitationType(String desc, int code) {
+    // Приоритет по WMO кодам
+    if (code >= 95) return 'heavy_rain'; // гроза
+    if (code >= 71 && code <= 77) return 'light_snow';
+    if (code >= 85) return 'heavy_snow';
+    if (code >= 51 && code <= 67) return 'light_rain';
+    
+    final d = desc.toLowerCase();
+    if (d.contains('дождь') || d.contains('rain')) return 'light_rain';
+    if (d.contains('снег') || d.contains('snow')) return 'light_snow';
     return 'none';
   }
 
   static String _getTemperatureCategory(double temp, Map<String, dynamic> zoneConfig) {
     final ranges = zoneConfig['temperature_ranges'] as Map<String, dynamic>?;
-    if (ranges == null || ranges.isEmpty) {
-      if (temp < -10) return 'freezing';
-      if (temp < 5) return 'cold';
-      if (temp < 15) return 'cool';
-      if (temp < 25) return 'mild';
-      if (temp < 35) return 'warm';
-      return 'very_hot';
-    }
-    for (final entry in ranges.entries) {
-      final range = entry.value;
-      if (range is List && range.length >= 2) {
-        if (temp >= _toDouble(range[0]) && temp < _toDouble(range[1])) return entry.key;
+    if (ranges != null) {
+      for (final entry in ranges.entries) {
+        final r = entry.value as List;
+        if (temp >= _toDouble(r[0]) && temp < _toDouble(r[1])) return entry.key;
       }
     }
+    // Fallback значения, синхронизированные с base.json
+    if (temp < -10) return 'freezing';
+    if (temp < 5) return 'cold';
+    if (temp < 15) return 'cool';
+    if (temp < 25) return 'comfortable'; // Важно: в твоем JSON именно 'comfortable'
+    if (temp < 35) return 'warm';
     return 'very_hot';
   }
 
   static double _getDayProgress(DateTime now, DateTime sunrise, DateTime sunset) {
-    final adjustedSunset =
-        sunset.isBefore(sunrise) ? sunset.add(const Duration(days: 1)) : sunset;
-    if (now.isBefore(sunrise)) return 0.0;
-    if (now.isAfter(adjustedSunset)) return 1.0;
-    final total = adjustedSunset.difference(sunrise).inSeconds.toDouble();
+    if (now.isBefore(sunrise) || now.isAfter(sunset)) return 0.0;
+    final total = sunset.difference(sunrise).inSeconds;
     if (total <= 0) return 0.5;
-    return now.difference(sunrise).inSeconds.toDouble() / total;
-  }
-
-  static String _getSeason(DateTime date, double latitude) {
-    final m = date.month;
-    final north = latitude >= 0;
-    if (north) {
-      if (m == 12 || m <= 2) return 'winter';
-      if (m <= 5) return 'spring';
-      if (m <= 8) return 'summer';
-      return 'autumn';
-    } else {
-      if (m == 12 || m <= 2) return 'summer';
-      if (m <= 5) return 'autumn';
-      if (m <= 8) return 'winter';
-      return 'spring';
-    }
+    return now.difference(sunrise).inSeconds / total;
   }
 }
