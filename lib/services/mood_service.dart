@@ -31,7 +31,8 @@ class MoodService {
         final mid = (_toDouble(tempRange[0]) + _toDouble(tempRange[1])) / 2;
         final span = (_toDouble(tempRange[1]) - _toDouble(tempRange[0])) / 2;
         final tempFactor = span > 0 ? ((weather.temp - mid).abs()) / span : 0.0;
-        final tempWeights = (baseConfig['factors']?['temperature'] as Map<String, dynamic>?)?[tempCategory] as Map<String, dynamic>?;
+        final tempWeights = (baseConfig['factors']?['temperature']
+            as Map<String, dynamic>?)?[tempCategory] as Map<String, dynamic>?;
         if (tempWeights != null) {
           final factor = _toDouble(sensitivity['temperature']?[tempCategory] ?? 1.0);
           energy += _toDouble(tempWeights['energy'] ?? 0.0) * tempFactor * factor;
@@ -48,9 +49,10 @@ class MoodService {
       valence += cloudFactor * _toDouble(cloudWeights['overcast']?['valence'] ?? 0.0);
     }
 
-    // 3️⃣ Осадки
+    // 3️⃣ Осадки (используем description из WMO кода)
     final precipType = _getPrecipitationType(weather.description);
-    final precipWeights = (baseConfig['factors']?['precipitation'] as Map<String, dynamic>?)?[precipType] as Map<String, dynamic>?;
+    final precipWeights = (baseConfig['factors']?['precipitation']
+        as Map<String, dynamic>?)?[precipType] as Map<String, dynamic>?;
     final precipFactor = _toDouble(sensitivity['precipitation']?[precipType] ?? 1.0);
     if (precipWeights != null) {
       final combinedFactor = 1 + (weather.windSpeed / 10);
@@ -88,7 +90,8 @@ class MoodService {
 
     // 6️⃣ Сезонное отклонение
     final season = _getSeason(now, latitude);
-    final seasonalNorm = zoneConfig['norms']?['temperature']?[season] as Map<String, dynamic>?;
+    final seasonalNorm =
+        zoneConfig['norms']?['temperature']?[season] as Map<String, dynamic>?;
     if (seasonalNorm != null) {
       final normTemp = _toDouble(seasonalNorm['expected'] ?? weather.temp);
       final tolerance = _toDouble(seasonalNorm['tolerance'] ?? 10.0);
@@ -108,8 +111,6 @@ class MoodService {
     return MoodResponse(energy: energy, valence: valence);
   }
 
-  // ─── Helpers ────────────────────────────────────────────────────────────────
-
   Future<Map<String, dynamic>> _loadJson(String path) async {
     final file = File(path);
     if (!file.existsSync()) throw Exception('Config not found: $path');
@@ -125,8 +126,8 @@ class MoodService {
 
   static String _getPrecipitationType(String description) {
     final d = description.toLowerCase();
-    if (d.contains('rain')) return 'light_rain';
-    if (d.contains('snow')) return 'light_snow';
+    if (d.contains('дождь') || d.contains('ливень') || d.contains('морось')) return 'light_rain';
+    if (d.contains('снег')) return 'light_snow';
     return 'none';
   }
 
@@ -150,7 +151,8 @@ class MoodService {
   }
 
   static double _getDayProgress(DateTime now, DateTime sunrise, DateTime sunset) {
-    final adjustedSunset = sunset.isBefore(sunrise) ? sunset.add(const Duration(days: 1)) : sunset;
+    final adjustedSunset =
+        sunset.isBefore(sunrise) ? sunset.add(const Duration(days: 1)) : sunset;
     if (now.isBefore(sunrise)) return 0.0;
     if (now.isAfter(adjustedSunset)) return 1.0;
     final total = adjustedSunset.difference(sunrise).inSeconds.toDouble();

@@ -85,8 +85,6 @@ Router buildRouter() {
   return router;
 }
 
-// ─── Helpers ──────────────────────────────────────────────────────────────────
-
 Response _ok(Map<String, dynamic> body) => Response.ok(
       jsonEncode(body),
       headers: {'content-type': 'application/json'},

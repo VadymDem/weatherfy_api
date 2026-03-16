@@ -1,3 +1,131 @@
+// ─── WMO Weather Code helpers ─────────────────────────────────────────────────
+
+String wmoDescription(int code) {
+  if (code == 0) return 'Ясно';
+  if (code <= 2) return 'Малооблачно';
+  if (code == 3) return 'Пасмурно';
+  if (code <= 49) return 'Туман';
+  if (code <= 57) return 'Морось';
+  if (code <= 67) return 'Дождь';
+  if (code <= 77) return 'Снег';
+  if (code <= 82) return 'Ливень';
+  if (code <= 86) return 'Снегопад';
+  if (code <= 99) return 'Гроза';
+  return 'Неизвестно';
+}
+
+String wmoIconCode(int code, {bool isDay = true}) {
+  if (code == 0) return isDay ? 'clear_day' : 'clear_night';
+  if (code <= 2) return isDay ? 'partly_cloudy_day' : 'partly_cloudy_night';
+  if (code == 3) return 'cloudy';
+  if (code <= 49) return 'fog';
+  if (code <= 57) return 'drizzle';
+  if (code <= 67) return 'rain';
+  if (code <= 77) return 'snow';
+  if (code <= 82) return 'rain';
+  if (code <= 86) return 'snow';
+  if (code <= 99) return 'thunderstorm';
+  return 'cloudy';
+}
+
+// ─── Hourly Forecast ──────────────────────────────────────────────────────────
+
+class HourlyForecast {
+  final DateTime time;
+  final double temp;
+  final double apparentTemp;
+  final int precipitationProbability;
+  final double precipitation;
+  final int weatherCode;
+  final double windSpeed;
+  final bool isDay;
+
+  HourlyForecast({
+    required this.time,
+    required this.temp,
+    required this.apparentTemp,
+    required this.precipitationProbability,
+    required this.precipitation,
+    required this.weatherCode,
+    required this.windSpeed,
+    required this.isDay,
+  });
+
+  String get description => wmoDescription(weatherCode);
+  String get iconCode => wmoIconCode(weatherCode, isDay: isDay);
+
+  Map<String, dynamic> toJson() => {
+        'time': time.toIso8601String(),
+        'temp': temp,
+        'apparent_temp': apparentTemp,
+        'precip_prob': precipitationProbability,
+        'precipitation': precipitation,
+        'weather_code': weatherCode,
+        'wind_speed': windSpeed,
+        'is_day': isDay,
+      };
+
+  factory HourlyForecast.fromJson(Map<String, dynamic> j) => HourlyForecast(
+        time: DateTime.parse(j['time'] as String),
+        temp: (j['temp'] as num).toDouble(),
+        apparentTemp: (j['apparent_temp'] as num).toDouble(),
+        precipitationProbability: (j['precip_prob'] as num).toInt(),
+        precipitation: (j['precipitation'] as num).toDouble(),
+        weatherCode: (j['weather_code'] as num).toInt(),
+        windSpeed: (j['wind_speed'] as num).toDouble(),
+        isDay: j['is_day'] as bool,
+      );
+}
+
+// ─── Daily Forecast ───────────────────────────────────────────────────────────
+
+class DailyForecast {
+  final DateTime date;
+  final int weatherCode;
+  final double tempMax;
+  final double tempMin;
+  final DateTime sunrise;
+  final DateTime sunset;
+  final double precipitationSum;
+  final double windSpeedMax;
+
+  DailyForecast({
+    required this.date,
+    required this.weatherCode,
+    required this.tempMax,
+    required this.tempMin,
+    required this.sunrise,
+    required this.sunset,
+    required this.precipitationSum,
+    required this.windSpeedMax,
+  });
+
+  String get description => wmoDescription(weatherCode);
+  String get iconCode => wmoIconCode(weatherCode, isDay: true);
+
+  Map<String, dynamic> toJson() => {
+        'date': date.toIso8601String(),
+        'weather_code': weatherCode,
+        'temp_max': tempMax,
+        'temp_min': tempMin,
+        'sunrise': sunrise.toIso8601String(),
+        'sunset': sunset.toIso8601String(),
+        'precip_sum': precipitationSum,
+        'wind_max': windSpeedMax,
+      };
+
+  factory DailyForecast.fromJson(Map<String, dynamic> j) => DailyForecast(
+        date: DateTime.parse(j['date'] as String),
+        weatherCode: (j['weather_code'] as num).toInt(),
+        tempMax: (j['temp_max'] as num).toDouble(),
+        tempMin: (j['temp_min'] as num).toDouble(),
+        sunrise: DateTime.parse(j['sunrise'] as String),
+        sunset: DateTime.parse(j['sunset'] as String),
+        precipitationSum: (j['precip_sum'] as num).toDouble(),
+        windSpeedMax: (j['wind_max'] as num).toDouble(),
+      );
+}
+
 // ─── Weather ──────────────────────────────────────────────────────────────────
 
 class WeatherResponse {
@@ -6,10 +134,17 @@ class WeatherResponse {
   final int humidity;
   final int cloudiness;
   final double windSpeed;
-  final String description;
-  final String icon;
+  final double precipitation;
+  final int weatherCode;
+  final bool isDay;
+  final int pressure;
   final DateTime sunrise;
   final DateTime sunset;
+  final double tempMin;
+  final double tempMax;
+  final int timezoneOffsetSeconds;
+  final List<HourlyForecast> hourly;
+  final List<DailyForecast> daily;
 
   WeatherResponse({
     required this.temp,
@@ -17,11 +152,21 @@ class WeatherResponse {
     required this.humidity,
     required this.cloudiness,
     required this.windSpeed,
-    required this.description,
-    required this.icon,
+    required this.precipitation,
+    required this.weatherCode,
+    required this.isDay,
+    required this.pressure,
     required this.sunrise,
     required this.sunset,
+    required this.tempMin,
+    required this.tempMax,
+    required this.timezoneOffsetSeconds,
+    required this.hourly,
+    required this.daily,
   });
+
+  String get description => wmoDescription(weatherCode);
+  String get iconCode => wmoIconCode(weatherCode, isDay: isDay);
 
   Map<String, dynamic> toJson() => {
         'temp': temp,
@@ -29,10 +174,19 @@ class WeatherResponse {
         'humidity': humidity,
         'cloudiness': cloudiness,
         'wind_speed': windSpeed,
-        'description': description,
-        'icon': icon,
+        'precipitation': precipitation,
+        'weather_code': weatherCode,
+        'is_day': isDay,
+        'pressure': pressure,
         'sunrise': sunrise.toIso8601String(),
         'sunset': sunset.toIso8601String(),
+        'temp_min': tempMin,
+        'temp_max': tempMax,
+        'timezone_offset_seconds': timezoneOffsetSeconds,
+        'description': description,
+        'icon': iconCode,
+        'hourly': hourly.map((h) => h.toJson()).toList(),
+        'daily': daily.map((d) => d.toJson()).toList(),
       };
 
   factory WeatherResponse.fromJson(Map<String, dynamic> j) => WeatherResponse(
@@ -41,32 +195,106 @@ class WeatherResponse {
         humidity: (j['humidity'] as num).toInt(),
         cloudiness: (j['cloudiness'] as num).toInt(),
         windSpeed: (j['wind_speed'] as num).toDouble(),
-        description: j['description'] as String,
-        icon: j['icon'] as String,
+        precipitation: (j['precipitation'] as num).toDouble(),
+        weatherCode: (j['weather_code'] as num).toInt(),
+        isDay: j['is_day'] as bool,
+        pressure: (j['pressure'] as num).toInt(),
         sunrise: DateTime.parse(j['sunrise'] as String),
         sunset: DateTime.parse(j['sunset'] as String),
+        tempMin: (j['temp_min'] as num).toDouble(),
+        tempMax: (j['temp_max'] as num).toDouble(),
+        timezoneOffsetSeconds: (j['timezone_offset_seconds'] as num).toInt(),
+        hourly: (j['hourly'] as List)
+            .map((e) => HourlyForecast.fromJson(e as Map<String, dynamic>))
+            .toList(),
+        daily: (j['daily'] as List)
+            .map((e) => DailyForecast.fromJson(e as Map<String, dynamic>))
+            .toList(),
       );
 
-  factory WeatherResponse.fromOwmJson(Map<String, dynamic> j) {
-    final main = j['main'] as Map<String, dynamic>;
-    final wind = j['wind'] as Map<String, dynamic>;
-    final clouds = j['clouds'] as Map<String, dynamic>;
-    final sys = j['sys'] as Map<String, dynamic>;
-    final weather = (j['weather'] as List).first as Map<String, dynamic>;
+  factory WeatherResponse.fromOpenMeteoJson(Map<String, dynamic> j) {
+    final current = j['current'] as Map<String, dynamic>;
+    final hourlyData = j['hourly'] as Map<String, dynamic>;
+    final dailyData = j['daily'] as Map<String, dynamic>;
+    final utcOffsetSeconds = (j['utc_offset_seconds'] as num).toInt();
+
+    final weatherCode = (current['weather_code'] as num).toInt();
+    final isDay = (current['is_day'] as num).toInt() == 1;
+
+    final tempMax = (dailyData['temperature_2m_max'] as List).first as num;
+    final tempMin = (dailyData['temperature_2m_min'] as List).first as num;
+    final sunrise = DateTime.parse((dailyData['sunrise'] as List).first as String);
+    final sunset = DateTime.parse((dailyData['sunset'] as List).first as String);
+
+    // ─── Hourly — ближайшие 48 часов ────────────────────────────────────────
+    final times = hourlyData['time'] as List;
+    final hourlyTemps = hourlyData['temperature_2m'] as List;
+    final hourlyApparent = hourlyData['apparent_temperature'] as List;
+    final hourlyPrecipProb = hourlyData['precipitation_probability'] as List;
+    final hourlyPrecip = hourlyData['precipitation'] as List;
+    final hourlyCodes = hourlyData['weather_code'] as List;
+    final hourlyWind = hourlyData['wind_speed_10m'] as List;
+    final hourlyIsDay = hourlyData['is_day'] as List;
+
+    final now = DateTime.now();
+    final hourlyForecasts = <HourlyForecast>[];
+
+    for (int i = 0; i < times.length && hourlyForecasts.length < 48; i++) {
+      final t = DateTime.parse(times[i] as String);
+      if (t.isBefore(now.subtract(const Duration(hours: 1)))) continue;
+      hourlyForecasts.add(HourlyForecast(
+        time: t,
+        temp: (hourlyTemps[i] as num).toDouble(),
+        apparentTemp: (hourlyApparent[i] as num).toDouble(),
+        precipitationProbability: (hourlyPrecipProb[i] as num? ?? 0).toInt(),
+        precipitation: (hourlyPrecip[i] as num? ?? 0).toDouble(),
+        weatherCode: (hourlyCodes[i] as num).toInt(),
+        windSpeed: (hourlyWind[i] as num).toDouble(),
+        isDay: (hourlyIsDay[i] as num).toInt() == 1,
+      ));
+    }
+
+    // ─── Daily ───────────────────────────────────────────────────────────────
+    final dailyTimes = dailyData['time'] as List;
+    final dailyCodes = dailyData['weather_code'] as List;
+    final dailyMax = dailyData['temperature_2m_max'] as List;
+    final dailyMin = dailyData['temperature_2m_min'] as List;
+    final dailySunrise = dailyData['sunrise'] as List;
+    final dailySunset = dailyData['sunset'] as List;
+    final dailyPrecip = dailyData['precipitation_sum'] as List;
+    final dailyWind = dailyData['wind_speed_10m_max'] as List;
+
+    final dailyForecasts = <DailyForecast>[];
+    for (int i = 0; i < dailyTimes.length; i++) {
+      dailyForecasts.add(DailyForecast(
+        date: DateTime.parse(dailyTimes[i] as String),
+        weatherCode: (dailyCodes[i] as num).toInt(),
+        tempMax: (dailyMax[i] as num).toDouble(),
+        tempMin: (dailyMin[i] as num).toDouble(),
+        sunrise: DateTime.parse(dailySunrise[i] as String),
+        sunset: DateTime.parse(dailySunset[i] as String),
+        precipitationSum: (dailyPrecip[i] as num? ?? 0).toDouble(),
+        windSpeedMax: (dailyWind[i] as num).toDouble(),
+      ));
+    }
+
     return WeatherResponse(
-      temp: (main['temp'] as num).toDouble(),
-      feelsLike: (main['feels_like'] as num).toDouble(),
-      humidity: (main['humidity'] as num).toInt(),
-      cloudiness: (clouds['all'] as num).toInt(),
-      windSpeed: (wind['speed'] as num).toDouble(),
-      description: weather['description'] as String,
-      icon: weather['icon'] as String,
-      sunrise: DateTime.fromMillisecondsSinceEpoch(
-          (sys['sunrise'] as int) * 1000,
-          isUtc: true),
-      sunset: DateTime.fromMillisecondsSinceEpoch(
-          (sys['sunset'] as int) * 1000,
-          isUtc: true),
+      temp: (current['temperature_2m'] as num).toDouble(),
+      feelsLike: (current['apparent_temperature'] as num).toDouble(),
+      humidity: (current['relative_humidity_2m'] as num).toInt(),
+      cloudiness: (current['cloud_cover'] as num).toInt(),
+      windSpeed: (current['wind_speed_10m'] as num).toDouble(),
+      precipitation: (current['precipitation'] as num? ?? 0).toDouble(),
+      weatherCode: weatherCode,
+      isDay: isDay,
+      pressure: (current['surface_pressure'] as num).toInt(),
+      sunrise: sunrise,
+      sunset: sunset,
+      tempMin: tempMin.toDouble(),
+      tempMax: tempMax.toDouble(),
+      timezoneOffsetSeconds: utcOffsetSeconds,
+      hourly: hourlyForecasts,
+      daily: dailyForecasts,
     );
   }
 }
@@ -127,7 +355,8 @@ class TrackResponse {
       artist: artist?['name'] as String? ?? '',
       previewUrl: j['preview'] as String?,
       albumCoverUrl: album?['cover_medium'] as String?,
-      externalUrl: j['link'] as String? ?? 'https://www.deezer.com/track/${j['id']}',
+      externalUrl:
+          j['link'] as String? ?? 'https://www.deezer.com/track/${j['id']}',
       durationSeconds: (j['duration'] as num?)?.toInt() ?? 0,
     );
   }
