@@ -8,5 +8,4 @@ services:
     env_file:
       - .env
     volumes:
-      # Монтируем .env отдельно если нужно обновить ключ без пересборки
       - ./.env:/app/.env:ro

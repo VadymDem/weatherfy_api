@@ -13,7 +13,6 @@ final _deezerService = DeezerService();
 Router buildRouter() {
   final router = Router();
 
-  // ── GET /weather?lat=&lon= ────────────────────────────────────────────────
   router.get('/weather', (Request request) async {
     final params = request.url.queryParameters;
     final lat = double.tryParse(params['lat'] ?? '');
@@ -31,8 +30,6 @@ Router buildRouter() {
     }
   });
 
-  // ── POST /mood ────────────────────────────────────────────────────────────
-  // Body: { weather: {...}, latitude: 0.0, climate_zone: "temperate_north" }
   router.post('/mood', (Request request) async {
     try {
       final rawBody = await request.readAsString();
@@ -82,7 +79,6 @@ Router buildRouter() {
     }
   });
 
-  // ── GET /health ───────────────────────────────────────────────────────────
   router.get('/health', (Request _) => _ok({'status': 'ok'}));
 
   return router;

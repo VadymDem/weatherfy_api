@@ -1,17 +1,15 @@
-// ─── WMO Weather Code helpers ─────────────────────────────────────────────────
-
 String wmoDescription(int code) {
   if (code == 0) return 'Ясно';
-  if (code <= 2) return 'Малооблачно';
-  if (code == 3) return 'Пасмурно';
+  if (code <= 2) return 'Мінлива хмарність';
+  if (code == 3) return 'Хмарно';
   if (code <= 49) return 'Туман';
-  if (code <= 57) return 'Морось';
-  if (code <= 67) return 'Дождь';
-  if (code <= 77) return 'Снег';
-  if (code <= 82) return 'Ливень';
-  if (code <= 86) return 'Снегопад';
+  if (code <= 57) return 'Мряка';
+  if (code <= 67) return 'Дощ';
+  if (code <= 77) return 'Сніг';
+  if (code <= 82) return 'Злива';
+  if (code <= 86) return 'Снігопад';
   if (code <= 99) return 'Гроза';
-  return 'Неизвестно';
+  return 'Невідомо';
 }
 
 String wmoIconCode(int code, {bool isDay = true}) {
@@ -27,8 +25,6 @@ String wmoIconCode(int code, {bool isDay = true}) {
   if (code <= 99) return 'thunderstorm';
   return 'cloudy';
 }
-
-// ─── Hourly Forecast ──────────────────────────────────────────────────────────
 
 class HourlyForecast {
   final DateTime time;
@@ -79,8 +75,6 @@ class HourlyForecast {
       );
 }
 
-// ─── Daily Forecast ───────────────────────────────────────────────────────────
-
 class DailyForecast {
   final DateTime date;
   final int weatherCode;
@@ -129,8 +123,6 @@ class DailyForecast {
         windSpeedMax: (j['wind_max'] as num).toDouble(),
       );
 }
-
-// ─── Weather ──────────────────────────────────────────────────────────────────
 
 class WeatherResponse {
   final double temp;
@@ -230,7 +222,6 @@ class WeatherResponse {
     final sunrise = DateTime.parse((dailyData['sunrise'] as List).first as String);
     final sunset = DateTime.parse((dailyData['sunset'] as List).first as String);
 
-    // ─── Hourly — ближайшие 48 часов ────────────────────────────────────────
     final times = hourlyData['time'] as List;
     final hourlyTemps = hourlyData['temperature_2m'] as List;
     final hourlyApparent = hourlyData['apparent_temperature'] as List;
@@ -258,7 +249,6 @@ class WeatherResponse {
       ));
     }
 
-    // ─── Daily ───────────────────────────────────────────────────────────────
     final dailyTimes = dailyData['time'] as List;
     final dailyCodes = dailyData['weather_code'] as List;
     final dailyMax = dailyData['temperature_2m_max'] as List;
@@ -303,8 +293,6 @@ class WeatherResponse {
   }
 }
 
-// ─── Mood ─────────────────────────────────────────────────────────────────────
-
 class MoodResponse {
   final double energy;
   final double valence;
@@ -318,8 +306,6 @@ class MoodResponse {
         valence: (j['valence'] as num).toDouble(),
       );
 }
-
-// ─── Track ────────────────────────────────────────────────────────────────────
 
 class TrackResponse {
   final int id;
